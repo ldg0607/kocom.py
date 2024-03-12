@@ -476,7 +476,7 @@ def mqtt_on_message(mqttc, obj, msg):
     # kocom/livingroom/fan/set_preset_mode/command
     elif 'fan' in topic_d and 'set_preset_mode' in topic_d:
         dev_id = device_h_dic['fan'] + room_h_dic.get(topic_d[1])
-        onoff_dic = {'off':'1000', 'on':'1100'}  #onoff_dic = {'off':'0000', 'on':'1101'}
+        onoff_dic = {'off':'0000', 'on':'1101'}  #onoff_dic = {'off':'0000', 'on':'1101'}
         speed_dic = {'Off':'00', 'Low':'40', 'Medium':'80', 'High':'c0'}
         if command == 'Off':
             onoff = onoff_dic['off']
@@ -531,14 +531,17 @@ def packet_processor(p):
             logtxt='[MQTT publish|gas] data[{}]'.format(state)
             mqttc.publish("kocom/livingroom/gas/state", json.dumps(state))
     elif p['type'] == 'send' and p['dest'] == 'elevator':
-        floor = int(p['value'][2:4],16)
+        # floor = int(p['value'][2:4],16)  ---- 삭제
         rs485_floor = int(config.get('Elevator','rs485_floor', fallback=0))
         if rs485_floor != 0 :
-            state = {'floor': floor}
-            if rs485_floor == floor:
-                state['state'] = 'off'
+             if p['value'] == '0300000000000000' :
+             # 도착 패킷 수신 시 off상태로 변경 [ AA 55 30 BC 00 44 00 01 00 01 03 00 00 00 00 00 00 00 35 0D 0D ]
+                   # state = {'floor': floor}  ---- 삭제
+                   state = {'state': 'off'}
+                   # if rs485_floor == floor:  ---- 삭제
+                        # state['state'] = 'off'  ---- 삭제
         else:
-            state = {'state': 'off'}
+             state = {'state': 'off'}
         logtxt='[MQTT publish|elevator] data[{}]'.format(state)
         mqttc.publish("kocom/myhome/elevator/state", json.dumps(state))
         # aa5530bc0044000100010300000000000000350d0d
@@ -641,11 +644,11 @@ def publish_discovery(dev, sub=''):
     elif dev == 'light':
         for num in range(1, int(config.get('User', 'light_count'))+1):
             #ha_topic = 'homeassistant/light/kocom_livingroom_light1/config'
-            topic = 'homeassistant/light/kocom_{}_light{}/config'.format(sub, num)
+            topic = 'homeassistant/light/kocom_livingroom_light{}/config'.format(num)
             payload = {
-                'name': 'Kocom {} Light{}'.format(sub, num),
-                'cmd_t': 'kocom/{}/light/{}/command'.format(sub, num),
-                'stat_t': 'kocom/{}/light/state'.format(sub),
+                'name': 'Kocom livingroom Light{}'.format(num),
+                'cmd_t': 'kocom/livingroom/light/{}/command'.format(num),
+                'stat_t': 'kocom/livingroom/light/state',
                 'stat_val_tpl': '{{ value_json.light_' + str(num) + ' }}',
                 'pl_on': 'on',
                 'pl_off': 'off',
