@@ -1,5 +1,5 @@
 {
-  "name": "Kocom Wallpad with RS485",
+  "name": "Kocom Wallpad with RS485 LDG",
   "version": "2022.07.17",
   "slug": "kocom_py",
   "description": "Kocom Wallpad for Home Assistant",
