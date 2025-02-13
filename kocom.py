@@ -480,6 +480,13 @@ def discovery():
         publish_discovery(dev[0], sub)
     publish_discovery('query')
 
+    #별도의 스레드에서 2초 후 상태 업데이트 실행
+    threading.Thread(target=delayed_elevator_state_update).start()
+
+def delayed_elevator_state_update():
+    time.sleep(2)
+    mqttc.publish("kocom/myhome/elevator/state", json.dumps({'state': 'off'}))
+
 #https://www.home-assistant.io/docs/mqtt/discovery/
 #<discovery_prefix>/<component>/<object_id>/config
 def publish_discovery(dev, sub=''):
