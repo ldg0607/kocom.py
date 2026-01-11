@@ -331,6 +331,8 @@ def send(dest, src, cmd, value, log=None, check_ack=True):
 
         # wait and checking for ACK
         ack_data.append(type_h_dic["ack"] + seq_h + "00" + src + dest + cmd + value)
+        if src == device_h_dic["wallpad"] + "00":
+            ack_data.append(type_h_dic["ack"] + seq_h + "00" + src + src + cmd + value)
         try:
             ack_q.get(
                 True, 1.3 + 0.2 * random.random()
@@ -1071,13 +1073,19 @@ def listen_hexdata():
             ack_q.put(d)
             continue
 
-        if wait_target.empty() == False:
-            if p_ret["dest_h"] == wait_target.queue[0] and p_ret["type"] == "ack":
+        if not wait_target.empty():
+            try:
+                target_dest = wait_target.queue[0]
+            except IndexError:
+                target_dest = None
+
+            if target_dest and p_ret["dest_h"] == target_dest and p_ret["type"] == "ack":
                 # if p_ret['src_h'] == wait_target.queue[0] and p_ret['type'] == 'send':
                 if len(ack_data) != 0:
-                    logging.info(
-                        "[ACK] No ack received, but response packet received before ACK. Assuming ACK OK"
-                    )
+                    if config.get("Log", "show_recv_hex") == "True":
+                        logging.info(
+                            "[ACK] No ack received, but response packet received before ACK. Assuming ACK OK"
+                        )
                     ack_q.put(d)
                     time.sleep(0.5)
                 wait_q.put(p_ret)
