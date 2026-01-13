@@ -280,18 +280,29 @@ class RS485Wrapper:
         else:
             return False
 
-    def close(self):
+    def close(self, socket_index=None):
         ret = False
         if self.conn != False:
             try:
                 if self.type == "serial":
                     ret = self.conn.close()
+                    self.conn = False
                 elif self.type == "socket":
-                    for sock in self.conns:
-                        if sock:
-                            sock.close()
-                    self.conns = [None] * len(self.socket_servers)
-                self.conn = False
+                    if socket_index is not None:
+                        if (
+                            0 <= socket_index < len(self.conns)
+                            and self.conns[socket_index]
+                        ):
+                            self.conns[socket_index].close()
+                            self.conns[socket_index] = None
+                        if not any(self.conns):
+                            self.conn = False
+                    else:
+                        for sock in self.conns:
+                            if sock:
+                                sock.close()
+                        self.conns = [None] * len(self.socket_servers)
+                        self.conn = False
             except:
                 pass
         return ret
@@ -348,7 +359,11 @@ def send(dest, src, cmd, value, log=None, check_ack=True):
         logging.info(
             "[RS485] send failed. closing RS485. it will try to reconnect to RS485 shortly."
         )
-        rs485.close()
+        socket_idx = device_socket_map.get(dest)
+        if rs485.type == "socket" and socket_idx is not None:
+            rs485.close(socket_idx)
+        else:
+            rs485.close()
     ack_data.clear()
     send_lock.release()
     return ret
@@ -430,12 +445,8 @@ def thermo_parse(value):
 
 def light_parse(value):
     ret = {}
-    try:
-        light_count = int(config.get("User", "light_count"))
-    except:
-        light_count = int(len(value) / 2)
-    for i in range(min(light_count, int(len(value) / 2))):
-        ret["light_" + str(i + 1)] = "off" if value[i * 2 : i * 2 + 2] == "00" else "on"
+    for i in range(1, int(config.get("User", "light_count")) + 1):
+        ret["light_" + str(i)] = "off" if value[i * 2 - 2 : i * 2] == "00" else "on"
     return ret
 
 
@@ -1079,7 +1090,11 @@ def listen_hexdata():
             except IndexError:
                 target_dest = None
 
-            if target_dest and p_ret["dest_h"] == target_dest and p_ret["type"] == "ack":
+            if (
+                target_dest
+                and p_ret["dest_h"] == target_dest
+                and p_ret["type"] == "ack"
+            ):
                 # if p_ret['src_h'] == wait_target.queue[0] and p_ret['type'] == 'send':
                 if len(ack_data) != 0:
                     if config.get("Log", "show_recv_hex") == "True":
