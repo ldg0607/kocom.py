@@ -356,13 +356,15 @@ def send(dest, src, cmd, value, log=None, check_ack=True):
             pass
 
     if ret == False:
-        logging.info(
-            "[RS485] send failed. closing RS485. it will try to reconnect to RS485 shortly."
-        )
-        socket_idx = device_socket_map.get(dest)
-        if rs485.type == "socket" and socket_idx is not None:
-            rs485.close(socket_idx)
+        if rs485.type == "socket":
+            logging.info(
+                "[RS485] send failed. Attempting to reconnect disconnected sockets."
+            )
+            rs485.connect()
         else:
+            logging.info(
+                "[RS485] send failed. closing RS485. it will try to reconnect to RS485 shortly."
+            )
             rs485.close()
     ack_data.clear()
     send_lock.release()
